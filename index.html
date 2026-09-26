@@ -30,6 +30,9 @@
       --muted: #a0a0a0;
       --rule: #3c3c3c;
       --focus: #eeeeee;
+      --chart-bg: #151515;
+      --chart-ink: #bdbdbd;
+      --chart-grid: #333333;
       color-scheme: dark;
     }
   }
@@ -40,12 +43,10 @@
     --muted: #a0a0a0;
     --rule: #3c3c3c;
     --focus: #eeeeee;
-    color-scheme: dark;
-  }
-  .charts[data-bg="dark"] {
-    --chart-bg: #1b1b1b;
+    --chart-bg: #151515;
     --chart-ink: #bdbdbd;
     --chart-grid: #333333;
+    color-scheme: dark;
   }
 
   * { box-sizing: border-box; }
@@ -317,7 +318,8 @@
     background: var(--ink);
     color: var(--ground);
   }
-  .snap-note { font-size: 14px; color: var(--muted); margin: 6px 0 0; max-width: 38ch; }
+  /* Two lines reserved so switching snap modes never moves anything */
+  .snap-note { font-size: 14px; line-height: 1.4; color: var(--muted); margin: 6px 0 0; max-width: 34ch; min-height: 2.8em; }
   .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
   .btn {
     border: 1px solid var(--rule);
@@ -437,16 +439,18 @@
   .chart svg { display: block; width: 100%; height: auto; }
   .chart .axis { stroke: var(--chart-grid); stroke-width: 1; }
   .chart .tick { fill: var(--chart-ink); font-size: 11px; font-family: inherit; }
+  /* Fixed columns so the legend's height depends on the number of colors, not name length */
   .legend {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 6px 16px;
     font-size: 13px;
     color: var(--chart-ink);
     margin-top: 10px;
   }
-  .legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .legend i { width: 10px; height: 10px; border-radius: 2px; display: block; }
+  .legend span { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; }
+  .legend span b { font-weight: inherit; overflow: hidden; text-overflow: ellipsis; }
+  .legend i { width: 10px; height: 10px; border-radius: 2px; display: block; flex: none; }
 
   .cards { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
   .card {
@@ -458,7 +462,7 @@
     gap: 12px;
     font-size: 15px;
   }
-  .card b { font-weight: 600; }
+  .card b { font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .card small { font-size: 13px; opacity: 0.8; font-variant-numeric: tabular-nums; }
 
   /* ---------- Color vision ---------- */
@@ -500,7 +504,6 @@
     gap: 12px;
   }
   footer a { color: inherit; }
-  .theme-toggle { font-size: 13px; padding: 4px 10px; }
 
   @media (max-width: 900px) {
     .charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -516,6 +519,8 @@
     .swatch .name { font-size: 22px; padding-right: 110px; }
     .swatch .value { font-size: 13px; }
     .swatch-tools { top: auto; bottom: 14px; right: 14px; }
+    /* Keep rows the same height when snapping adds the "was" note */
+    .swatch > span.was { position: absolute; top: 14px; right: 14px; margin: 0; }
     .swatch.is-selected { box-shadow: inset 6px 0 0 currentColor; }
     .swatch.is-selected::after { display: none; }
     .swatch.drop-before { box-shadow: inset 0 5px 0 var(--ink); }
@@ -579,17 +584,18 @@
           <button type="button" data-value="tidy" aria-pressed="false">Tidy</button>
           <button type="button" data-value="tailwind" aria-pressed="false">Tailwind</button>
         </div>
-        <p class="snap-note" id="snap-note">Showing your colors as entered.</p>
+        <p class="snap-note" id="snap-note">Your colors as entered.</p>
         <div class="actions">
           <button type="button" class="btn" id="copy-all">Copy hex list</button>
-          <button type="button" class="btn" id="keep-snapped" hidden>Use snapped colors</button>
+          <button type="button" class="btn" id="keep-snapped" disabled>Use snapped colors</button>
           <button type="button" class="btn" id="copy-link">Copy link</button>
         </div>
       </div>
       <div>
-        <span class="field-label" id="bg-label">Chart background</span>
-        <div class="segmented" role="group" aria-labelledby="bg-label" id="chart-bg">
-          <button type="button" data-value="light" aria-pressed="true">Light</button>
+        <span class="field-label" id="theme-label">Background</span>
+        <div class="segmented" role="group" aria-labelledby="theme-label" id="theme">
+          <button type="button" data-value="auto" aria-pressed="true">Auto</button>
+          <button type="button" data-value="light" aria-pressed="false">Light</button>
           <button type="button" data-value="dark" aria-pressed="false">Dark</button>
         </div>
       </div>
@@ -616,7 +622,7 @@
   <section aria-labelledby="charts-title">
     <h2 id="charts-title">In use</h2>
     <p class="lede">The same data drawn five ways, so you can see how the colors hold up as bars, thin lines, small dots, and large areas.</p>
-    <div class="charts" id="charts" data-bg="light"></div>
+    <div class="charts" id="charts"></div>
   </section>
 
   <section aria-labelledby="vision-title">
@@ -645,7 +651,6 @@
 
   <footer>
     <span>Names from <a href="https://github.com/meodai/color-names">color-names</a>. Snap palette from <a href="https://tailwindcss.com/docs/customizing-colors">Tailwind CSS</a>. Palettes from <a href="https://carto.com/carto-colors/">CARTOColors</a> by CARTO (CC BY 4.0), <a href="https://personal.sron.nl/~pault/">Paul Tol</a>, <a href="https://www.fabiocrameri.ch/colourmaps/">Scientific Colour Maps</a> by Fabio Crameri, <a href="https://matplotlib.org/cmocean/">cmocean</a>, <a href="https://github.com/BlakeRMills/MetBrewer">MetBrewer</a>, <a href="https://github.com/karthik/wesanderson">wesanderson</a>, <a href="https://nanx.me/ggsci/">ggsci</a>, Tableau, Observable, Okabe &amp; Ito, IBM, seaborn, and matplotlib. Your colors stay in the link and are never sent anywhere.</span>
-    <button type="button" class="btn theme-toggle" id="theme">Switch to dark page</button>
   </footer>
 </main>
 
@@ -890,7 +895,6 @@
   const state = {
     original: [],
     snap: "off",
-    chartBg: "light",
     cmap: null, // id of the colormap the palette was sampled from, if any
     selected: null, // index of the color open in the editor
     kind: "categorical",
@@ -1336,7 +1340,7 @@
 
   function legend(colors, names) {
     return el("div", { class: "legend" }, colors.map((c, i) =>
-      el("span", {}, [el("i", { style: { background: "#" + c } }), document.createTextNode(names[i])])
+      el("span", { title: names[i] }, [el("i", { style: { background: "#" + c } }), el("b", { text: names[i] })])
     ));
   }
 
@@ -1609,9 +1613,9 @@
   // ---------- Controls ----------
 
   const SNAP_NOTES = {
-    off: "Showing your colors as entered.",
-    tidy: "Same hues, with lightness and saturation evened out so the colors sit together as a set.",
-    tailwind: "Each color moved to the closest color in Tailwind's hand-tuned palette."
+    off: "Your colors as entered.",
+    tidy: "Same hues, with lightness and saturation evened out into a set.",
+    tailwind: "Each color moved to the nearest Tailwind color."
   };
 
   function setPressed(groupId, value) {
@@ -1633,7 +1637,7 @@
     renderExport(colors, names);
     markBrowse();
     document.getElementById("snap-note").textContent = SNAP_NOTES[state.snap];
-    document.getElementById("keep-snapped").hidden = state.snap === "off";
+    document.getElementById("keep-snapped").disabled = state.snap === "off";
     document.title = names.length ? `Palette: ${names.slice(0, 3).join(", ")}${names.length > 3 ? "…" : ""}` : "Palette";
   }
 
@@ -1671,14 +1675,6 @@
     render();
   });
 
-  document.getElementById("chart-bg").addEventListener("click", e => {
-    const b = e.target.closest("button");
-    if (!b) return;
-    state.chartBg = b.dataset.value;
-    setPressed("chart-bg", state.chartBg);
-    document.getElementById("charts").dataset.bg = state.chartBg;
-  });
-
   function flash(button, text) {
     const original = button.textContent;
     button.textContent = text;
@@ -1703,30 +1699,32 @@
     render();
   });
 
-  // Page theme toggle (the charts have their own background switch)
-  const themeBtn = document.getElementById("theme");
-  const systemDark = () => window.matchMedia("(prefers-color-scheme: dark)").matches;
+  // Page background: follows the system setting unless the viewer picks one
   function applyTheme(theme) {
-    if (theme) document.documentElement.dataset.theme = theme;
-    const dark = theme ? theme === "dark" : systemDark();
-    themeBtn.textContent = dark ? "Switch to light page" : "Switch to dark page";
+    if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+    else delete document.documentElement.dataset.theme;
+    setPressed("theme", theme || "auto");
   }
   let savedTheme = null;
   try { savedTheme = localStorage.getItem("palette-theme"); } catch (e) {}
   applyTheme(savedTheme);
-  themeBtn.addEventListener("click", () => {
-    const dark = document.documentElement.dataset.theme
-      ? document.documentElement.dataset.theme === "dark"
-      : systemDark();
-    const next = dark ? "light" : "dark";
-    applyTheme(next);
-    try { localStorage.setItem("palette-theme", next); } catch (e) {}
+  document.getElementById("theme").addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    const theme = b.dataset.value === "auto" ? null : b.dataset.value;
+    applyTheme(theme);
+    try {
+      if (theme) localStorage.setItem("palette-theme", theme);
+      else localStorage.removeItem("palette-theme");
+    } catch (e) {}
   });
 
   // ---------- Start ----------
 
   function loadFromHash() {
-    const fromHash = parseColors(decodeURIComponent(location.hash.slice(1)).replace(/[-_]/g, " "));
+    // Every dash-separated code in the link is a color, even all-letter ones like "bbbbbb"
+    const tokens = decodeURIComponent(location.hash.slice(1)).split(/[-_,\s]+/).filter(Boolean);
+    const fromHash = parseColors(tokens.map(t => (t.startsWith("#") || /^rgb/i.test(t) ? t : "#" + t)).join(" "));
     state.original = fromHash.length ? fromHash : DEFAULT.slice();
     // Recognize a palette sampled from a colormap so the Colors slider keeps working
     const cmap = findColormap(state.original);
