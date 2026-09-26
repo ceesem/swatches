@@ -4,7 +4,7 @@ A small page for looking at a color palette: names for each color, sample charts
 
 Put colors in the link after `#`, separated by dashes:
 
-https://ceesem.github.io/swatches/#264653-2a9d8f-e9c46a-f4a261-e76f51
+https://csdashm.com/swatches/#264653-2a9d8f-e9c46a-f4a261-e76f51
 
 The colors live in the part of the link after `#`, which browsers never send to the server.
 
