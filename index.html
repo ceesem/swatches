@@ -77,13 +77,20 @@
     justify-content: flex-end;
     gap: 4px;
     padding: 20px 18px 22px;
-    border: 0;
-    text-align: left;
-    cursor: pointer;
     container-type: inline-size;
     transition: background-color 280ms ease, color 280ms ease;
   }
-  .swatch:focus-visible { outline-offset: -6px; outline-color: currentColor; }
+  /* The whole swatch is one big button; the text sits on top without catching clicks */
+  .swatch-hit {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+  .swatch-hit:focus-visible { outline: 2px solid currentColor; outline-offset: -6px; }
+  .swatch > span { position: relative; pointer-events: none; }
   .swatch .name {
     font-size: clamp(15px, 13cqi, 46px);
     font-weight: 600;
@@ -100,31 +107,144 @@
     overflow-wrap: anywhere;
   }
   .swatch .was {
-    position: absolute;
-    top: 16px;
-    left: 18px;
     display: flex;
     align-items: center;
     gap: 7px;
     font-size: 13px;
     opacity: 0.9;
+    margin-bottom: 8px;
   }
   .swatch .was i {
     display: block;
-    width: 22px;
-    height: 22px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     box-shadow: 0 0 0 2px currentColor;
   }
-  .swatch .copied {
+  /* Notch that points from the selected swatch down into the editor */
+  .swatch.is-selected::after {
+    content: "";
     position: absolute;
-    top: 16px;
-    right: 18px;
-    font-size: 13px;
-    opacity: 0;
-    transition: opacity 160ms ease;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    border: 11px solid transparent;
+    border-bottom-color: var(--panel);
+    pointer-events: none;
   }
-  .swatch.is-copied .copied { opacity: 1; }
+  .swatch-tools {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 140ms ease;
+  }
+  .swatch:hover .swatch-tools,
+  .swatch:focus-within .swatch-tools,
+  .swatch.is-selected .swatch-tools { opacity: 1; }
+  @media (hover: none) { .swatch-tools { opacity: 1; } }
+  .swatch-tools button {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-size: 13px;
+    line-height: 1.3;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: inset 0 0 0 1px currentColor;
+    opacity: 0.8;
+  }
+  .swatch-tools button:hover { opacity: 1; }
+  .swatch.is-dragging { opacity: 0.45; }
+  .swatch.drop-before { box-shadow: inset 5px 0 0 var(--ink); }
+  .swatch.drop-after { box-shadow: inset -5px 0 0 var(--ink); }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* ---------- Editor ---------- */
+  .editor { background: var(--panel); border-bottom: 1px solid var(--rule); }
+  .editor[hidden] { display: none; }
+  .editor-inner {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 22px 24px 24px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    gap: 22px 48px;
+    align-items: start;
+  }
+  .editor-head { display: flex; gap: 16px; align-items: center; }
+  .editor-chip {
+    width: 68px;
+    height: 68px;
+    flex: none;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    cursor: pointer;
+  }
+  .editor-chip::-webkit-color-swatch-wrapper { padding: 0; }
+  .editor-chip::-webkit-color-swatch { border: 0; border-radius: 8px; }
+  .editor-chip::-moz-color-swatch { border: 0; border-radius: 8px; }
+  .editor-name { font-size: 26px; font-weight: 600; font-stretch: 85%; line-height: 1.1; }
+  .editor-hex {
+    width: 120px;
+    margin-top: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--ground);
+    font-variant-numeric: tabular-nums;
+  }
+  .editor-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .btn:disabled { opacity: 0.45; cursor: default; }
+  .editor-note { font-size: 13px; color: var(--muted); margin: 10px 0 0; min-height: 1em; }
+  .sliders { display: grid; gap: 14px; padding-top: 4px; }
+  .slider {
+    display: grid;
+    grid-template-columns: 84px minmax(0, 1fr) 48px;
+    align-items: center;
+    gap: 14px;
+    font-size: 14px;
+  }
+  .slider output { text-align: right; font-variant-numeric: tabular-nums; }
+  .slider input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 24px;
+    margin: 0;
+    border-radius: 12px;
+    background: var(--rule);
+    cursor: pointer;
+  }
+  .slider input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: transparent;
+    box-shadow: 0 0 0 3px #ffffff, 0 0 0 4px rgba(0, 0, 0, 0.5);
+  }
+  .slider input[type="range"]::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    box-shadow: 0 0 0 3px #ffffff, 0 0 0 4px rgba(0, 0, 0, 0.5);
+  }
 
   /* ---------- Layout ---------- */
   main {
@@ -221,31 +341,41 @@
     font-weight: 600;
     list-style-position: inside;
   }
-  .browse-body { padding: 4px 0 22px; display: grid; gap: 22px; }
-  .browse-kind {
+  .browse-body { padding: 6px 0 26px; }
+  .browse-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 18px;
+  }
+  .browse-bar .spacer { flex: 1 1 auto; }
+  .segmented .n { opacity: 0.6; margin-left: 4px; font-variant-numeric: tabular-nums; }
+  .filter {
+    width: 210px;
+    padding: 7px 11px;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+  }
+  .count { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; }
+  .count[hidden] { display: none; }
+  .count input { width: 150px; accent-color: var(--ink); }
+  .count output { font-variant-numeric: tabular-nums; min-width: 2ch; font-weight: 600; }
+  .kind-note { font-size: 14px; color: var(--muted); margin: 12px 0 0; max-width: 72ch; }
+  .group { margin-top: 22px; }
+  .group-head {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    justify-content: space-between;
-    gap: 6px 24px;
+    gap: 2px 12px;
+    margin-bottom: 6px;
   }
-  .browse-kind h3 { font-size: 18px; font-weight: 600; font-stretch: 85%; margin: 0; }
-  .browse-kind p { margin: 2px 0 0; font-size: 14px; color: var(--muted); max-width: 60ch; }
-  .count { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; }
-  .count input { width: 150px; accent-color: var(--ink); }
-  .count output { font-variant-numeric: tabular-nums; min-width: 2ch; font-weight: 600; }
-  .group {
-    display: grid;
-    grid-template-columns: 110px minmax(0, 1fr);
-    gap: 8px 16px;
-    align-items: start;
-    margin-top: 10px;
-  }
-  .group > span { font-size: 14px; color: var(--muted); padding-top: 8px; }
+  .group-head h3 { font-size: 18px; font-weight: 600; font-stretch: 85%; margin: 0; }
+  .group-head p { font-size: 14px; color: var(--muted); margin: 0; }
   .thumbs {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 4px 10px;
+    gap: 2px 10px;
   }
   .thumb {
     border: 1px solid transparent;
@@ -259,7 +389,30 @@
   .thumb[aria-pressed="true"] { border-color: var(--ink); }
   .thumb .bar { display: flex; height: 22px; border-radius: 4px; overflow: hidden; }
   .thumb .bar i { flex: 1 1 0; display: block; }
-  .thumb .label { display: block; font-size: 13px; margin-top: 4px; }
+  .thumb .label { display: block; font-size: 13px; margin-top: 4px; overflow-wrap: anywhere; }
+  .no-match { color: var(--muted); margin: 18px 0 0; }
+
+  /* ---------- Export ---------- */
+  .export-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .code {
+    margin: 0;
+    padding: 14px 16px;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13.5px;
+    line-height: 1.55;
+    white-space: pre;
+  }
 
   /* ---------- Charts ---------- */
   .charts {
@@ -354,20 +507,25 @@
     .chart.wide { grid-column: span 2; }
     .controls { grid-template-columns: minmax(0, 1fr); }
     .options { min-width: 0; }
+    .editor-inner { grid-template-columns: minmax(0, 1fr); }
   }
   @media (max-width: 640px) {
     main { padding: 0 16px 56px; }
     .strip { flex-direction: column; min-height: 0; }
     .swatch { flex: none; min-height: 88px; padding: 14px 16px; container-type: normal; }
-    .swatch .name { font-size: 22px; }
+    .swatch .name { font-size: 22px; padding-right: 110px; }
     .swatch .value { font-size: 13px; }
-    .swatch .was { top: 12px; left: auto; right: 16px; }
-    .swatch .copied { top: auto; bottom: 14px; right: 16px; }
+    .swatch-tools { top: auto; bottom: 14px; right: 14px; }
+    .swatch.is-selected { box-shadow: inset 6px 0 0 currentColor; }
+    .swatch.is-selected::after { display: none; }
+    .swatch.drop-before { box-shadow: inset 0 5px 0 var(--ink); }
+    .swatch.drop-after { box-shadow: inset 0 -5px 0 var(--ink); }
+    .editor-inner { padding: 18px 16px 20px; }
+    .slider { grid-template-columns: 76px minmax(0, 1fr) 40px; gap: 10px; }
+    .filter { width: 100%; }
     .charts { grid-template-columns: minmax(0, 1fr); }
     .chart.wide, .chart.full { grid-column: auto; }
     .vision-row { grid-template-columns: minmax(0, 1fr); gap: 6px; }
-    .group { grid-template-columns: minmax(0, 1fr); }
-    .group > span { padding-top: 0; }
     .segmented { flex-wrap: wrap; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -379,12 +537,39 @@
 
 <div class="strip" id="strip" aria-label="Palette"></div>
 
+<div class="editor" id="editor" hidden>
+  <div class="editor-inner">
+    <div>
+      <div class="editor-head">
+        <input type="color" class="editor-chip" id="ed-picker" aria-label="Pick a color">
+        <div>
+          <div class="editor-name" id="ed-name"></div>
+          <label class="visually-hidden" for="ed-hex">Hex value</label>
+          <input class="editor-hex" id="ed-hex" spellcheck="false" autocomplete="off">
+        </div>
+      </div>
+      <div class="editor-actions">
+        <button type="button" class="btn" id="ed-left">Move left</button>
+        <button type="button" class="btn" id="ed-right">Move right</button>
+        <button type="button" class="btn" id="ed-remove">Remove</button>
+        <button type="button" class="btn" id="ed-done">Done</button>
+      </div>
+      <p class="editor-note" id="ed-note"></p>
+    </div>
+    <div class="sliders">
+      <label class="slider"><span>Lightness</span><input type="range" id="ed-l" min="0" max="100" step="0.5"><output id="ed-l-out"></output></label>
+      <label class="slider"><span>Saturation</span><input type="range" id="ed-c" min="0" max="0.37" step="0.001"><output id="ed-c-out"></output></label>
+      <label class="slider"><span>Hue</span><input type="range" id="ed-h" min="0" max="360" step="1"><output id="ed-h-out"></output></label>
+    </div>
+  </div>
+</div>
+
 <main>
   <div class="controls">
     <div>
       <label class="field-label" for="colors">Colors</label>
       <textarea id="colors" spellcheck="false" placeholder="#264653, #2a9d8f, rgb(233, 196, 106)"></textarea>
-      <p class="hint" id="hint">Paste hex or rgb() colors in any format. Click a color above to copy its hex.</p>
+      <p class="hint" id="hint">Paste hex or rgb() colors in any format. Click a color above to edit it, or drag to reorder.</p>
     </div>
     <div class="options">
       <div>
@@ -414,28 +599,17 @@
   <details class="browse" id="browse">
     <summary>Browse palettes</summary>
     <div class="browse-body">
-      <div>
-        <div class="browse-kind">
-          <div>
-            <h3>Categorical</h3>
-            <p>Sets of distinct colors for labeling groups.</p>
-          </div>
-        </div>
-        <div id="palette-groups"></div>
+      <div class="browse-bar">
+        <div class="segmented" role="group" aria-label="Kind of palette" id="kind"></div>
+        <input type="search" class="filter" id="filter" placeholder="Filter palettes" aria-label="Filter palettes by name or source">
+        <span class="spacer"></span>
+        <label class="count" id="count-wrap">Colors
+          <input type="range" id="cmap-count" min="2" max="16" value="7">
+          <output id="cmap-count-out" for="cmap-count">7</output>
+        </label>
       </div>
-      <div>
-        <div class="browse-kind">
-          <div>
-            <h3>From a colormap</h3>
-            <p>Evenly spaced colors from a continuous colormap, skipping the very ends the same way seaborn does.</p>
-          </div>
-          <label class="count">Colors
-            <input type="range" id="cmap-count" min="2" max="16" value="7">
-            <output id="cmap-count-out" for="cmap-count">7</output>
-          </label>
-        </div>
-        <div id="colormap-groups"></div>
-      </div>
+      <p class="kind-note" id="kind-note"></p>
+      <div id="groups"></div>
     </div>
   </details>
 
@@ -452,8 +626,25 @@
     <ul class="warnings" id="warnings"></ul>
   </section>
 
+  <section aria-labelledby="export-title">
+    <h2 id="export-title">Export</h2>
+    <p class="lede">The palette as code, ready to paste. If a snap option is on, this uses the snapped colors.</p>
+    <div class="export-bar">
+      <div class="segmented" role="group" aria-label="Format" id="export-format">
+        <button type="button" data-value="python" aria-pressed="true">Python</button>
+        <button type="button" data-value="matplotlib" aria-pressed="false">matplotlib</button>
+        <button type="button" data-value="seaborn" aria-pressed="false">seaborn</button>
+        <button type="button" data-value="r" aria-pressed="false">R</button>
+        <button type="button" data-value="css" aria-pressed="false">CSS</button>
+        <button type="button" data-value="json" aria-pressed="false">JSON</button>
+      </div>
+      <button type="button" class="btn" id="export-copy">Copy code</button>
+    </div>
+    <pre class="code" id="export-code"></pre>
+  </section>
+
   <footer>
-    <span>Names from <a href="https://github.com/meodai/color-names">color-names</a>. Snap palette from <a href="https://tailwindcss.com/docs/customizing-colors">Tailwind CSS</a>. Palettes from <a href="https://seaborn.pydata.org">seaborn</a>, <a href="https://matplotlib.org">matplotlib</a>, <a href="https://carto.com/carto-colors/">CARTOColors by CARTO</a> (CC BY 4.0), and Okabe &amp; Ito. Your colors stay in the link and are never sent anywhere.</span>
+    <span>Names from <a href="https://github.com/meodai/color-names">color-names</a>. Snap palette from <a href="https://tailwindcss.com/docs/customizing-colors">Tailwind CSS</a>. Palettes from <a href="https://carto.com/carto-colors/">CARTOColors</a> by CARTO (CC BY 4.0), <a href="https://personal.sron.nl/~pault/">Paul Tol</a>, <a href="https://www.fabiocrameri.ch/colourmaps/">Scientific Colour Maps</a> by Fabio Crameri, <a href="https://matplotlib.org/cmocean/">cmocean</a>, <a href="https://github.com/BlakeRMills/MetBrewer">MetBrewer</a>, <a href="https://github.com/karthik/wesanderson">wesanderson</a>, <a href="https://nanx.me/ggsci/">ggsci</a>, Tableau, Observable, Okabe &amp; Ito, IBM, seaborn, and matplotlib. Your colors stay in the link and are never sent anywhere.</span>
     <button type="button" class="btn theme-toggle" id="theme">Switch to dark page</button>
   </footer>
 </main>
@@ -700,7 +891,11 @@
     original: [],
     snap: "off",
     chartBg: "light",
-    cmap: null // colormap the palette was sampled from, if any
+    cmap: null, // id of the colormap the palette was sampled from, if any
+    selected: null, // index of the color open in the editor
+    kind: "categorical",
+    filter: "",
+    exportFormat: "python"
   };
 
   function current() {
@@ -720,34 +915,267 @@
     strip.replaceChildren();
     hexes.forEach((hex, i) => {
       const rgb = hexToRgb(hex);
-      const fg = textOn(hex);
-      const changed = state.snap !== "off" && hex !== state.original[i];
-      const btn = el("button", {
+      const selected = state.selected === i;
+      const sw = el("div", {
+        class: "swatch" + (selected ? " is-selected" : ""),
+        draggable: "true",
+        style: { background: "#" + hex, color: textOn(hex) }
+      });
+      sw.dataset.index = i;
+
+      const hit = el("button", {
         type: "button",
-        class: "swatch",
-        "aria-label": `${names[i]}, #${hex.toUpperCase()}. Copy hex`,
-        style: { background: "#" + hex, color: fg }
-      }, [
-        el("span", { class: "name", text: names[i] }),
-        el("span", { class: "value", text: "#" + hex.toUpperCase() }),
-        el("span", { class: "value", text: `rgb(${rgb.join(", ")})` }),
-        el("span", { class: "copied", text: "Copied" })
-      ]);
-      if (changed) {
-        btn.append(el("span", { class: "was" }, [
+        class: "swatch-hit",
+        "aria-label": `Edit ${names[i]}, #${hex.toUpperCase()}`,
+        "aria-expanded": String(selected),
+        "aria-controls": "editor"
+      });
+      hit.addEventListener("click", () => selectSwatch(selected ? null : i));
+      sw.append(hit);
+
+      if (state.snap !== "off" && hex !== state.original[i]) {
+        sw.append(el("span", { class: "was" }, [
           el("i", { style: { background: "#" + state.original[i] } }),
           document.createTextNode("was #" + state.original[i].toUpperCase())
         ]));
       }
-      btn.addEventListener("click", async () => {
-        if (await copyText("#" + hex.toUpperCase())) {
-          btn.classList.add("is-copied");
-          setTimeout(() => btn.classList.remove("is-copied"), 1200);
-        }
+      sw.append(
+        el("span", { class: "name", text: names[i] }),
+        el("span", { class: "value", text: "#" + hex.toUpperCase() }),
+        el("span", { class: "value", text: `rgb(${rgb.join(", ")})` })
+      );
+
+      const copyBtn = el("button", { type: "button", text: "Copy", "aria-label": `Copy #${hex.toUpperCase()}` });
+      copyBtn.addEventListener("click", async () => {
+        if (await copyText("#" + hex.toUpperCase())) flash(copyBtn, "Copied");
       });
-      strip.append(btn);
+      const tools = el("div", { class: "swatch-tools" }, [copyBtn]);
+      if (hexes.length > 1) {
+        const removeBtn = el("button", { type: "button", text: "×", "aria-label": `Remove ${names[i]}` });
+        removeBtn.addEventListener("click", () => removeColor(i));
+        tools.append(removeBtn);
+      }
+      sw.append(tools);
+      strip.append(sw);
     });
   }
+
+  // ---------- Reorder and remove ----------
+
+  function syncInput() {
+    if (document.activeElement !== input) {
+      input.value = state.original.map(h => "#" + h).join(", ");
+    }
+  }
+
+  // Apply a change to state.original everywhere it shows
+  function commit() {
+    syncInput();
+    writeHash();
+    render();
+  }
+
+  // Coalesce rapid slider changes into one redraw per frame
+  let commitQueued = false;
+  function scheduleCommit() {
+    if (commitQueued) return;
+    commitQueued = true;
+    requestAnimationFrame(() => {
+      commitQueued = false;
+      commit();
+    });
+  }
+
+  // `to` is the insertion point in the list before the color is taken out
+  function moveColor(from, to) {
+    if (to > from) to -= 1;
+    if (to === from || to < 0 || to >= state.original.length) return;
+    const [hex] = state.original.splice(from, 1);
+    state.original.splice(to, 0, hex);
+    const sel = state.selected;
+    if (sel === from) state.selected = to;
+    else if (sel !== null && from < sel && to >= sel) state.selected = sel - 1;
+    else if (sel !== null && from > sel && to <= sel) state.selected = sel + 1;
+    commit();
+    if (state.selected !== null) updateEditorButtons();
+  }
+
+  function removeColor(i) {
+    if (state.original.length <= 1) return;
+    state.original.splice(i, 1);
+    if (state.selected === i) closeEditor(false);
+    else if (state.selected !== null && state.selected > i) state.selected -= 1;
+    commit();
+    if (state.selected !== null) updateEditorButtons();
+  }
+
+  const stripEl = document.getElementById("strip");
+  let dragFrom = null;
+
+  function dropAfter(sw, e) {
+    const r = sw.getBoundingClientRect();
+    return getComputedStyle(stripEl).flexDirection === "column"
+      ? e.clientY - r.top > r.height / 2
+      : e.clientX - r.left > r.width / 2;
+  }
+  function clearDropMarks() {
+    stripEl.querySelectorAll(".drop-before, .drop-after").forEach(n => n.classList.remove("drop-before", "drop-after"));
+  }
+
+  stripEl.addEventListener("dragstart", e => {
+    const sw = e.target.closest(".swatch");
+    if (!sw) return;
+    dragFrom = Number(sw.dataset.index);
+    sw.classList.add("is-dragging");
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", "#" + state.original[dragFrom]);
+  });
+  stripEl.addEventListener("dragover", e => {
+    const sw = dragFrom !== null && e.target.closest(".swatch");
+    if (!sw) return;
+    e.preventDefault();
+    clearDropMarks();
+    sw.classList.add(dropAfter(sw, e) ? "drop-after" : "drop-before");
+  });
+  stripEl.addEventListener("dragleave", e => {
+    if (!stripEl.contains(e.relatedTarget)) clearDropMarks();
+  });
+  stripEl.addEventListener("drop", e => {
+    const sw = dragFrom !== null && e.target.closest(".swatch");
+    if (!sw) return;
+    e.preventDefault();
+    const from = dragFrom;
+    dragFrom = null;
+    moveColor(from, Number(sw.dataset.index) + (dropAfter(sw, e) ? 1 : 0));
+  });
+  stripEl.addEventListener("dragend", () => {
+    dragFrom = null;
+    clearDropMarks();
+    stripEl.querySelectorAll(".is-dragging").forEach(n => n.classList.remove("is-dragging"));
+  });
+
+  // ---------- Editor ----------
+
+  const C_MAX = 0.37;
+  const byId = id => document.getElementById(id);
+  const ed = {
+    root: byId("editor"),
+    picker: byId("ed-picker"),
+    name: byId("ed-name"),
+    hex: byId("ed-hex"),
+    note: byId("ed-note"),
+    left: byId("ed-left"),
+    right: byId("ed-right"),
+    remove: byId("ed-remove"),
+    l: byId("ed-l"), lOut: byId("ed-l-out"),
+    c: byId("ed-c"), cOut: byId("ed-c-out"),
+    h: byId("ed-h"), hOut: byId("ed-h-out"),
+    lch: [0, 0, 0] // lightness 0-1, chroma, hue in degrees
+  };
+
+  const lchHex = (L, C, H) => rgbToHex(oklchToRgb(L, C, (H * Math.PI) / 180));
+
+  function selectSwatch(i) {
+    if (i === null) {
+      closeEditor(true);
+      return;
+    }
+    ed.note.textContent = "";
+    if (state.snap !== "off") {
+      // Edits apply to what's on screen, so adopt the snapped colors first
+      state.original = current();
+      state.snap = "off";
+      setPressed("snap", "off");
+      ed.note.textContent = "Switched to the snapped colors so you can edit them.";
+      syncInput();
+      writeHash();
+    }
+    state.selected = i;
+    ed.root.hidden = false;
+    loadEditor(state.original[i]);
+    render();
+  }
+
+  function closeEditor(rerender) {
+    const was = state.selected;
+    state.selected = null;
+    ed.root.hidden = true;
+    if (rerender) {
+      render();
+      const hit = stripEl.querySelectorAll(".swatch-hit")[was];
+      if (hit) hit.focus();
+    }
+  }
+
+  function loadEditor(hex) {
+    const [L, C, h] = oklch(hexToRgb(hex));
+    // Grays have no meaningful hue, so keep the last one instead of jumping to 0
+    const H = C < 0.002 ? ed.lch[2] : ((h * 180) / Math.PI + 360) % 360;
+    ed.lch = [L, Math.min(C, C_MAX), H];
+    ed.l.value = L * 100;
+    ed.c.value = ed.lch[1];
+    ed.h.value = H;
+    updateEditorView(hex);
+  }
+
+  function gradient(stops) {
+    return `linear-gradient(to right, ${stops.map(h => "#" + h).join(", ")})`;
+  }
+
+  function updateEditorView(hex) {
+    const [L, C, H] = ed.lch;
+    ed.picker.value = "#" + hex;
+    if (document.activeElement !== ed.hex) ed.hex.value = "#" + hex.toUpperCase();
+    ed.name.textContent = nameFor(hexToRgb(hex));
+    ed.lOut.value = Math.round(L * 100);
+    ed.cOut.value = Math.round((C / C_MAX) * 100);
+    ed.hOut.value = Math.round(H) + "°";
+    // Each track previews what that slider would do with the other two held still
+    const steps = n => Array.from({ length: n }, (_, i) => i / (n - 1));
+    ed.l.style.background = gradient(steps(11).map(t => lchHex(t, C, H)));
+    ed.c.style.background = gradient(steps(11).map(t => lchHex(L, t * C_MAX, H)));
+    ed.h.style.background = gradient(steps(13).map(t => lchHex(L, C, t * 360)));
+    updateEditorButtons();
+  }
+
+  function updateEditorButtons() {
+    const vertical = getComputedStyle(stripEl).flexDirection === "column";
+    ed.left.textContent = vertical ? "Move up" : "Move left";
+    ed.right.textContent = vertical ? "Move down" : "Move right";
+    ed.left.disabled = state.selected === 0;
+    ed.right.disabled = state.selected === state.original.length - 1;
+    ed.remove.disabled = state.original.length <= 1;
+  }
+
+  function setSelectedColor(hex, reloadSliders) {
+    if (state.selected === null) return;
+    state.original[state.selected] = hex;
+    if (reloadSliders) loadEditor(hex);
+    else updateEditorView(hex);
+    scheduleCommit();
+  }
+
+  function onSlider() {
+    ed.lch = [Number(ed.l.value) / 100, Number(ed.c.value), Number(ed.h.value)];
+    setSelectedColor(lchHex(...ed.lch), false);
+  }
+  [ed.l, ed.c, ed.h].forEach(r => r.addEventListener("input", onSlider));
+
+  ed.picker.addEventListener("input", () => setSelectedColor(ed.picker.value.slice(1).toLowerCase(), true));
+  ed.hex.addEventListener("input", () => {
+    const parsed = parseColors(ed.hex.value.startsWith("#") ? ed.hex.value : "#" + ed.hex.value);
+    if (parsed.length === 1) setSelectedColor(parsed[0], true);
+  });
+  ed.hex.addEventListener("blur", () => {
+    if (state.selected !== null) ed.hex.value = "#" + state.original[state.selected].toUpperCase();
+  });
+  ed.left.addEventListener("click", () => moveColor(state.selected, state.selected - 1));
+  ed.right.addEventListener("click", () => moveColor(state.selected, state.selected + 2));
+  ed.remove.addEventListener("click", () => removeColor(state.selected));
+  byId("ed-done").addEventListener("click", () => closeEditor(true));
+  ed.root.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeEditor(true);
+  });
 
   // ---------- Rendering: charts ----------
 
@@ -979,77 +1407,131 @@
 
   // ---------- Browse palettes ----------
 
-  const COLORMAP_LUTS = {};
-  (window.COLORMAPS || []).forEach(g => g.items.forEach(item => {
-    COLORMAP_LUTS[item.name] = item.lut.match(/.{6}/g);
-  }));
+  const LIBRARY = window.PALETTE_LIBRARY || { categorical: [], sequential: [], diverging: [] };
+  const KINDS = [
+    { key: "categorical", label: "Categorical",
+      note: "Sets of distinct colors for labeling groups. Click one to load it." },
+    { key: "sequential", label: "Sequential",
+      note: "Colormaps that run from low to high. Loading one takes evenly spaced colors, skipping the very ends the way seaborn does. CARTOColors uses its own hand-tuned version when it has one for that many colors." },
+    { key: "diverging", label: "Diverging",
+      note: "Colormaps with a neutral middle, for values above and below a center point. An odd number of colors keeps the middle color." }
+  ];
 
-  // Same positions as seaborn's color_palette(cmap, n): skip both ends
-  function sampleColormap(name, n) {
-    const lut = COLORMAP_LUTS[name];
+  const ITEMS = {};
+  const COLORMAP_ITEMS = [];
+  KINDS.forEach(({ key }) => (LIBRARY[key] || []).forEach(g => g.items.forEach(item => {
+    item.id = `${key}/${g.source}/${item.name}`;
+    item.kind = key;
+    item.source = g.source;
+    if (item.lut) item.lutArr = item.lut.match(/.{6}/g);
+    ITEMS[item.id] = item;
+    if (!item.colors) COLORMAP_ITEMS.push(item);
+  })));
+
+  // Blend through a list of stops in OKLab, including both ends
+  function interpolate(stops, n) {
+    const labs = stops.map(h => rgbToOklab(hexToRgb(h)));
     return Array.from({ length: n }, (_, i) => {
-      const pos = (i + 1) / (n + 1);
-      return lut[Math.min(lut.length - 1, Math.floor(pos * lut.length))];
+      const t = n === 1 ? 0 : (i / (n - 1)) * (labs.length - 1);
+      const k = Math.min(labs.length - 2, Math.floor(t));
+      const f = t - k;
+      const lab = labs[k].map((v, j) => v + (labs[k + 1][j] - v) * f);
+      return rgbToHex(linearToRgb(oklabToLinear(lab)));
     });
   }
 
-  const countInput = document.getElementById("cmap-count");
-  const countOut = document.getElementById("cmap-count-out");
+  function largestClass(item) {
+    return item.classes[Math.max(...Object.keys(item.classes).map(Number))];
+  }
+
+  function sampleItem(item, n) {
+    if (item.colors) return item.colors.slice();
+    if (item.classes) return (item.classes[n] || interpolate(largestClass(item), n)).slice();
+    // Same positions as seaborn's color_palette(cmap, n): skip both ends
+    const lut = item.lutArr;
+    return Array.from({ length: n }, (_, i) =>
+      lut[Math.min(lut.length - 1, Math.floor(((i + 1) / (n + 1)) * lut.length))]);
+  }
+
+  function findColormap(hexes) {
+    const key = hexes.join("-");
+    if (state.cmap && ITEMS[state.cmap] && sampleItem(ITEMS[state.cmap], hexes.length).join("-") === key) {
+      return ITEMS[state.cmap];
+    }
+    if (!hexes.length || hexes.length > 16) return null;
+    return COLORMAP_ITEMS.find(item => sampleItem(item, hexes.length).join("-") === key) || null;
+  }
+
+  const countInput = byId("cmap-count");
+  const countOut = byId("cmap-count-out");
   const cmapCount = () => Number(countInput.value);
 
-  function thumb(label, bar, onPick) {
-    const btn = el("button", { type: "button", class: "thumb", "aria-pressed": "false" }, [
-      bar,
-      el("span", { class: "label", text: label })
-    ]);
-    btn.addEventListener("click", onPick);
-    return btn;
+  function thumbBar(item) {
+    if (item.colors) {
+      return el("span", { class: "bar" }, item.colors.map(c => el("i", { style: { background: "#" + c } })));
+    }
+    const stops = item.lutArr
+      ? Array.from({ length: 9 }, (_, i) => item.lutArr[Math.round((i / 8) * (item.lutArr.length - 1))])
+      : largestClass(item);
+    return el("span", { class: "bar", style: { background: gradient(stops) } });
   }
 
-  function renderBrowse() {
-    const paletteGroups = document.getElementById("palette-groups");
-    (window.PALETTES || []).forEach(g => {
-      paletteGroups.append(el("div", { class: "group" }, [
-        el("span", { text: g.source }),
-        el("div", { class: "thumbs" }, g.items.map(item => {
-          const btn = thumb(item.name,
-            el("span", { class: "bar" }, item.colors.map(c => el("i", { style: { background: "#" + c } }))),
-            () => loadColors(item.colors, null));
-          btn.dataset.colors = item.colors.join("-");
-          return btn;
-        }))
-      ]));
-    });
+  function renderKindTabs() {
+    const kindEl = byId("kind");
+    kindEl.replaceChildren(...KINDS.map(k => {
+      const total = (LIBRARY[k.key] || []).reduce((sum, g) => sum + g.items.length, 0);
+      return el("button", { type: "button", "data-value": k.key, "aria-pressed": String(state.kind === k.key) }, [
+        document.createTextNode(k.label),
+        el("span", { class: "n", text: String(total) })
+      ]);
+    }));
+  }
 
-    const colormapGroups = document.getElementById("colormap-groups");
-    (window.COLORMAPS || []).forEach(g => {
-      colormapGroups.append(el("div", { class: "group" }, [
-        el("span", { text: g.source }),
-        el("div", { class: "thumbs" }, g.items.map(item => {
-          const lut = COLORMAP_LUTS[item.name];
-          const stops = Array.from({ length: 9 }, (_, i) => "#" + lut[Math.round((i / 8) * (lut.length - 1))]);
-          const bar = el("span", { class: "bar", style: { background: `linear-gradient(to right, ${stops.join(", ")})` } });
-          const btn = thumb(item.name, bar, () => loadColors(sampleColormap(item.name, cmapCount()), item.name));
-          btn.dataset.cmap = item.name;
+  function renderGroups() {
+    const kind = KINDS.find(k => k.key === state.kind);
+    byId("kind-note").textContent = kind.note;
+    byId("count-wrap").hidden = state.kind === "categorical";
+    const q = state.filter.trim().toLowerCase();
+    const groupsEl = byId("groups");
+    groupsEl.replaceChildren();
+    (LIBRARY[state.kind] || []).forEach(g => {
+      const items = g.items.filter(item =>
+        !q || item.name.toLowerCase().includes(q) || g.source.toLowerCase().includes(q));
+      if (!items.length) return;
+      groupsEl.append(el("div", { class: "group" }, [
+        el("div", { class: "group-head" }, [el("h3", { text: g.source }), el("p", { text: g.note })]),
+        el("div", { class: "thumbs" }, items.map(item => {
+          const btn = el("button", { type: "button", class: "thumb", "aria-pressed": "false" }, [
+            thumbBar(item),
+            el("span", { class: "label", text: item.name })
+          ]);
+          btn.dataset.id = item.id;
+          btn.addEventListener("click", () =>
+            loadColors(sampleItem(item, cmapCount()), item.colors ? null : item.id));
           return btn;
         }))
       ]));
     });
+    if (!groupsEl.children.length) {
+      groupsEl.append(el("p", { class: "no-match", text: `No ${kind.label.toLowerCase()} palettes match "${state.filter.trim()}".` }));
+    }
+    markBrowse();
   }
 
   function markBrowse() {
     const key = state.original.join("-");
+    const cmap = findColormap(state.original);
     document.querySelectorAll(".thumb").forEach(btn => {
-      const match = btn.dataset.cmap
-        ? btn.dataset.cmap === state.cmap && sampleColormap(state.cmap, cmapCount()).join("-") === key
-        : btn.dataset.colors === key;
+      const item = ITEMS[btn.dataset.id];
+      const match = item.colors ? item.colors.join("-") === key : cmap === item;
       btn.setAttribute("aria-pressed", String(match));
     });
   }
 
-  function loadColors(hexes, cmapName) {
+  function loadColors(hexes, cmapId) {
+    if (state.selected !== null) closeEditor(false);
     state.original = hexes.slice();
-    state.cmap = cmapName;
+    state.cmap = cmapId;
     input.value = state.original.map(h => "#" + h).join(", ");
     hint.textContent = HINT_TEXT;
     hint.classList.remove("is-error");
@@ -1057,17 +1539,71 @@
     render();
   }
 
+  byId("kind").addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    state.kind = b.dataset.value;
+    setPressed("kind", state.kind);
+    renderGroups();
+  });
+
+  byId("filter").addEventListener("input", e => {
+    state.filter = e.target.value;
+    renderGroups();
+  });
+
   countInput.addEventListener("input", () => {
     countOut.value = countInput.value;
     // Re-sample live if the palette still comes straight from a colormap
-    if (state.cmap) {
-      const prevLen = state.original.length;
-      if (sampleColormap(state.cmap, prevLen).join("-") === state.original.join("-")) {
-        loadColors(sampleColormap(state.cmap, cmapCount()), state.cmap);
-        return;
-      }
-    }
-    markBrowse();
+    const cmap = findColormap(state.original);
+    if (cmap) loadColors(sampleItem(cmap, cmapCount()), cmap.id);
+  });
+
+  // ---------- Export ----------
+
+  function listLines(values, open, close, indent) {
+    if (values.length <= 5) return open + values.join(", ") + close;
+    return open + "\n" + values.map(v => indent + v + ",").join("\n") + "\n" + close;
+  }
+
+  function slug(name) {
+    return name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "color";
+  }
+
+  const EXPORTERS = {
+    python: hexes => "colors = " + listLines(hexes.map(h => `"#${h}"`), "[", "]", "    "),
+    matplotlib: hexes => "from matplotlib.colors import ListedColormap\n\ncmap = ListedColormap(" +
+      listLines(hexes.map(h => `"#${h}"`), "[", "]", "    ") + ', name="palette")',
+    seaborn: hexes => "import seaborn as sns\n\nsns.set_palette(" +
+      listLines(hexes.map(h => `"#${h}"`), "[", "]", "    ") + ")",
+    r: hexes => "palette <- " + listLines(hexes.map(h => `"#${h}"`), "c(", ")", "  ").replace(/,\n\)$/, "\n)"),
+    css: (hexes, names) => {
+      const seen = {};
+      return ":root {\n" + hexes.map((h, i) => {
+        let key = slug(names[i]);
+        seen[key] = (seen[key] || 0) + 1;
+        if (seen[key] > 1) key += "-" + seen[key];
+        return `  --${key}: #${h};`;
+      }).join("\n") + "\n}";
+    },
+    json: (hexes, names) => JSON.stringify(hexes.map((h, i) => ({ name: names[i], hex: "#" + h })), null, 2)
+  };
+
+  function renderExport(colors, names) {
+    byId("export-code").textContent = EXPORTERS[state.exportFormat](colors, names);
+  }
+
+  byId("export-format").addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    state.exportFormat = b.dataset.value;
+    setPressed("export-format", state.exportFormat);
+    const colors = current();
+    renderExport(colors, labelsFor(colors));
+  });
+
+  byId("export-copy").addEventListener("click", async e => {
+    if (await copyText(byId("export-code").textContent)) flash(e.currentTarget, "Copied");
   });
 
   // ---------- Controls ----------
@@ -1094,6 +1630,7 @@
     renderStrip(colors, names);
     renderCharts(colors, names);
     renderVision(colors, names);
+    renderExport(colors, names);
     markBrowse();
     document.getElementById("snap-note").textContent = SNAP_NOTES[state.snap];
     document.getElementById("keep-snapped").hidden = state.snap === "off";
@@ -1114,8 +1651,10 @@
     hint.textContent = HINT_TEXT;
     hint.classList.remove("is-error");
     state.original = parsed;
+    if (state.selected !== null && state.selected >= parsed.length) closeEditor(false);
     if (updateHash) writeHash();
     render();
+    if (state.selected !== null) loadEditor(state.original[state.selected]);
   }
 
   let inputTimer;
@@ -1190,15 +1729,21 @@
     const fromHash = parseColors(decodeURIComponent(location.hash.slice(1)).replace(/[-_]/g, " "));
     state.original = fromHash.length ? fromHash : DEFAULT.slice();
     // Recognize a palette sampled from a colormap so the Colors slider keeps working
-    const n = state.original.length;
-    state.cmap = n <= 16 ? Object.keys(COLORMAP_LUTS).find(name =>
-      sampleColormap(name, n).join("-") === state.original.join("-")) || null : null;
-    if (state.cmap) countInput.value = countOut.value = n;
+    const cmap = findColormap(state.original);
+    state.cmap = cmap ? cmap.id : null;
+    if (cmap) {
+      countInput.value = countOut.value = state.original.length;
+      state.kind = cmap.kind;
+      setPressed("kind", state.kind);
+      renderGroups();
+    }
+    if (state.selected !== null) closeEditor(false);
     input.value = state.original.map(h => "#" + h).join(", ");
     render();
   }
   window.addEventListener("hashchange", loadFromHash);
-  renderBrowse();
+  renderKindTabs();
+  renderGroups();
   loadFromHash();
 })();
 </script>
