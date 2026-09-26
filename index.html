@@ -209,6 +209,58 @@
   .btn:hover { border-color: var(--muted); }
   .btn[hidden] { display: none; }
 
+  /* ---------- Browse palettes ---------- */
+  .browse {
+    margin-top: 24px;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .browse summary {
+    cursor: pointer;
+    padding: 12px 0;
+    font-weight: 600;
+    list-style-position: inside;
+  }
+  .browse-body { padding: 4px 0 22px; display: grid; gap: 22px; }
+  .browse-kind {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px 24px;
+  }
+  .browse-kind h3 { font-size: 18px; font-weight: 600; font-stretch: 85%; margin: 0; }
+  .browse-kind p { margin: 2px 0 0; font-size: 14px; color: var(--muted); max-width: 60ch; }
+  .count { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; }
+  .count input { width: 150px; accent-color: var(--ink); }
+  .count output { font-variant-numeric: tabular-nums; min-width: 2ch; font-weight: 600; }
+  .group {
+    display: grid;
+    grid-template-columns: 110px minmax(0, 1fr);
+    gap: 8px 16px;
+    align-items: start;
+    margin-top: 10px;
+  }
+  .group > span { font-size: 14px; color: var(--muted); padding-top: 8px; }
+  .thumbs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 4px 10px;
+  }
+  .thumb {
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: 6px;
+    padding: 6px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .thumb:hover { border-color: var(--rule); }
+  .thumb[aria-pressed="true"] { border-color: var(--ink); }
+  .thumb .bar { display: flex; height: 22px; border-radius: 4px; overflow: hidden; }
+  .thumb .bar i { flex: 1 1 0; display: block; }
+  .thumb .label { display: block; font-size: 13px; margin-top: 4px; }
+
   /* ---------- Charts ---------- */
   .charts {
     display: grid;
@@ -314,6 +366,8 @@
     .charts { grid-template-columns: minmax(0, 1fr); }
     .chart.wide, .chart.full { grid-column: auto; }
     .vision-row { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+    .group { grid-template-columns: minmax(0, 1fr); }
+    .group > span { padding-top: 0; }
     .segmented { flex-wrap: wrap; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -357,6 +411,34 @@
     </div>
   </div>
 
+  <details class="browse" id="browse">
+    <summary>Browse palettes</summary>
+    <div class="browse-body">
+      <div>
+        <div class="browse-kind">
+          <div>
+            <h3>Categorical</h3>
+            <p>Sets of distinct colors for labeling groups.</p>
+          </div>
+        </div>
+        <div id="palette-groups"></div>
+      </div>
+      <div>
+        <div class="browse-kind">
+          <div>
+            <h3>From a colormap</h3>
+            <p>Evenly spaced colors from a continuous colormap, skipping the very ends the same way seaborn does.</p>
+          </div>
+          <label class="count">Colors
+            <input type="range" id="cmap-count" min="2" max="16" value="7">
+            <output id="cmap-count-out" for="cmap-count">7</output>
+          </label>
+        </div>
+        <div id="colormap-groups"></div>
+      </div>
+    </div>
+  </details>
+
   <section aria-labelledby="charts-title">
     <h2 id="charts-title">In use</h2>
     <p class="lede">The same data drawn five ways, so you can see how the colors hold up as bars, thin lines, small dots, and large areas.</p>
@@ -371,12 +453,13 @@
   </section>
 
   <footer>
-    <span>Names from <a href="https://github.com/meodai/color-names">color-names</a>. Snap palette from <a href="https://tailwindcss.com/docs/customizing-colors">Tailwind CSS</a>. Your colors stay in the link and are never sent anywhere.</span>
+    <span>Names from <a href="https://github.com/meodai/color-names">color-names</a>. Snap palette from <a href="https://tailwindcss.com/docs/customizing-colors">Tailwind CSS</a>. Palettes from <a href="https://seaborn.pydata.org">seaborn</a>, <a href="https://matplotlib.org">matplotlib</a>, <a href="https://carto.com/carto-colors/">CARTOColors by CARTO</a> (CC BY 4.0), and Okabe &amp; Ito. Your colors stay in the link and are never sent anywhere.</span>
     <button type="button" class="btn theme-toggle" id="theme">Switch to dark page</button>
   </footer>
 </main>
 
 <script src="data.js"></script>
+<script src="palettes.js"></script>
 <script>
 (function () {
   "use strict";
@@ -616,7 +699,8 @@
   const state = {
     original: [],
     snap: "off",
-    chartBg: "light"
+    chartBg: "light",
+    cmap: null // colormap the palette was sampled from, if any
   };
 
   function current() {
@@ -893,6 +977,99 @@
     });
   }
 
+  // ---------- Browse palettes ----------
+
+  const COLORMAP_LUTS = {};
+  (window.COLORMAPS || []).forEach(g => g.items.forEach(item => {
+    COLORMAP_LUTS[item.name] = item.lut.match(/.{6}/g);
+  }));
+
+  // Same positions as seaborn's color_palette(cmap, n): skip both ends
+  function sampleColormap(name, n) {
+    const lut = COLORMAP_LUTS[name];
+    return Array.from({ length: n }, (_, i) => {
+      const pos = (i + 1) / (n + 1);
+      return lut[Math.min(lut.length - 1, Math.floor(pos * lut.length))];
+    });
+  }
+
+  const countInput = document.getElementById("cmap-count");
+  const countOut = document.getElementById("cmap-count-out");
+  const cmapCount = () => Number(countInput.value);
+
+  function thumb(label, bar, onPick) {
+    const btn = el("button", { type: "button", class: "thumb", "aria-pressed": "false" }, [
+      bar,
+      el("span", { class: "label", text: label })
+    ]);
+    btn.addEventListener("click", onPick);
+    return btn;
+  }
+
+  function renderBrowse() {
+    const paletteGroups = document.getElementById("palette-groups");
+    (window.PALETTES || []).forEach(g => {
+      paletteGroups.append(el("div", { class: "group" }, [
+        el("span", { text: g.source }),
+        el("div", { class: "thumbs" }, g.items.map(item => {
+          const btn = thumb(item.name,
+            el("span", { class: "bar" }, item.colors.map(c => el("i", { style: { background: "#" + c } }))),
+            () => loadColors(item.colors, null));
+          btn.dataset.colors = item.colors.join("-");
+          return btn;
+        }))
+      ]));
+    });
+
+    const colormapGroups = document.getElementById("colormap-groups");
+    (window.COLORMAPS || []).forEach(g => {
+      colormapGroups.append(el("div", { class: "group" }, [
+        el("span", { text: g.source }),
+        el("div", { class: "thumbs" }, g.items.map(item => {
+          const lut = COLORMAP_LUTS[item.name];
+          const stops = Array.from({ length: 9 }, (_, i) => "#" + lut[Math.round((i / 8) * (lut.length - 1))]);
+          const bar = el("span", { class: "bar", style: { background: `linear-gradient(to right, ${stops.join(", ")})` } });
+          const btn = thumb(item.name, bar, () => loadColors(sampleColormap(item.name, cmapCount()), item.name));
+          btn.dataset.cmap = item.name;
+          return btn;
+        }))
+      ]));
+    });
+  }
+
+  function markBrowse() {
+    const key = state.original.join("-");
+    document.querySelectorAll(".thumb").forEach(btn => {
+      const match = btn.dataset.cmap
+        ? btn.dataset.cmap === state.cmap && sampleColormap(state.cmap, cmapCount()).join("-") === key
+        : btn.dataset.colors === key;
+      btn.setAttribute("aria-pressed", String(match));
+    });
+  }
+
+  function loadColors(hexes, cmapName) {
+    state.original = hexes.slice();
+    state.cmap = cmapName;
+    input.value = state.original.map(h => "#" + h).join(", ");
+    hint.textContent = HINT_TEXT;
+    hint.classList.remove("is-error");
+    writeHash();
+    render();
+  }
+
+  countInput.addEventListener("input", () => {
+    countOut.value = countInput.value;
+    // Re-sample live if the palette still comes straight from a colormap
+    if (state.cmap) {
+      const prevLen = state.original.length;
+      if (sampleColormap(state.cmap, prevLen).join("-") === state.original.join("-")) {
+        loadColors(sampleColormap(state.cmap, cmapCount()), state.cmap);
+        return;
+      }
+    }
+    markBrowse();
+  });
+
   // ---------- Controls ----------
 
   const SNAP_NOTES = {
@@ -917,6 +1094,7 @@
     renderStrip(colors, names);
     renderCharts(colors, names);
     renderVision(colors, names);
+    markBrowse();
     document.getElementById("snap-note").textContent = SNAP_NOTES[state.snap];
     document.getElementById("keep-snapped").hidden = state.snap === "off";
     document.title = names.length ? `Palette: ${names.slice(0, 3).join(", ")}${names.length > 3 ? "…" : ""}` : "Palette";
@@ -1011,10 +1189,16 @@
   function loadFromHash() {
     const fromHash = parseColors(decodeURIComponent(location.hash.slice(1)).replace(/[-_]/g, " "));
     state.original = fromHash.length ? fromHash : DEFAULT.slice();
+    // Recognize a palette sampled from a colormap so the Colors slider keeps working
+    const n = state.original.length;
+    state.cmap = n <= 16 ? Object.keys(COLORMAP_LUTS).find(name =>
+      sampleColormap(name, n).join("-") === state.original.join("-")) || null : null;
+    if (state.cmap) countInput.value = countOut.value = n;
     input.value = state.original.map(h => "#" + h).join(", ");
     render();
   }
   window.addEventListener("hashchange", loadFromHash);
+  renderBrowse();
   loadFromHash();
 })();
 </script>
